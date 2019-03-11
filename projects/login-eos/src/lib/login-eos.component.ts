@@ -1,19 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 
 @Component({
-  selector: 'lib-loginEOS',
-  template: `
-    <p>
-      login-eos works!
-    </p>
-  `,
-  styles: []
+  selector: 'app-login-eos',
+  template: '<ngx-toasta></ngx-toasta>'
 })
-export class LoginEOSComponent implements OnInit {
-
-  constructor() { }
-
-  ngOnInit() {
-  }
-
-}
+export class LoginEOSComponent {}
