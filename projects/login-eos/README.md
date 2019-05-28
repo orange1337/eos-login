@@ -10,6 +10,7 @@ eosjs@16.0.9
 ```
 npm i --save login-eos
 ```
+
 ## Patch for scatter compatible with angular apps
 ```
 // /patch.js
