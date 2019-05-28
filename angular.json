@@ -23,8 +23,7 @@
               "src/assets"
             ],
             "styles": [
-              "src/styles.css",
-              "node_modules/ngx-toasta/styles/style-material.css"
+              "src/styles.css"
             ],
             "scripts": []
           },
@@ -80,8 +79,7 @@
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "src/karma.conf.js",
             "styles": [
-              "src/styles.css",
-              "node_modules/ngx-toasta/styles/style-material.css"
+              "src/styles.css"
             ],
             "scripts": [],
             "assets": [

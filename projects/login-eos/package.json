@@ -1,6 +1,6 @@
 {
   "name": "login-eos",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "peerDependencies": {
     "@angular/common": "^7.1.0",
     "@angular/core": "^7.1.0"
@@ -8,6 +8,7 @@
   "dependencies": {
     "@babel/runtime": "^7.4.5",
     "eosjs": "^16.0.9",
+    "ngx-toasta": "^0.1.0",
     "scatterjs-core": "^2.7.18",
     "scatterjs-plugin-eosjs": "^1.5.1"
   }

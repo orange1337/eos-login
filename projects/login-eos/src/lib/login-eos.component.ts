@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { LoginEOSService } from './login-eos.service';
 
 @Component({
@@ -18,7 +18,8 @@ import { LoginEOSService } from './login-eos.service';
 				</div>
   		</div>
   `,
-  styleUrls: ['./popup.css']
+  styleUrls: ['./popup.css', '../../node_modules/ngx-toasta/styles/style-material.css'],
+  encapsulation: ViewEncapsulation.None
 })
 export class LoginEOSComponent implements OnInit {
 	
