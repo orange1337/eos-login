@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { LoginEOSService } from '../../projects/login-eos/src/lib/login-eos.service';
 
 @Component({
   selector: 'app-root',
@@ -6,5 +7,5 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'eos-login';
+	constructor(public loginEOSService: LoginEOSService){};
 }

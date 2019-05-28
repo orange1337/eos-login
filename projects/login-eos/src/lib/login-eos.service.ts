@@ -2,94 +2,152 @@ import { Injectable, EventEmitter, Inject } from '@angular/core';
 import { ToastaService, ToastaConfig, ToastOptions, ToastData } from 'ngx-toasta';
 import { configInterface, configNetworkService } from './login-config.service';
 
+import ScatterJS from 'scatterjs-core';
+import ScatterEOS from 'scatterjs-plugin-eosjs';
+import Eos from 'eosjs';
+
+ScatterJS.plugins( new ScatterEOS() );
+
 @Injectable({
   providedIn: 'root'
 })
 export class LoginEOSService {
   
-  WINDOW: any = window;
-  eos: any = this.WINDOW.Eos(this.config.Eos);
-  loggedIn: any = new EventEmitter<boolean>();
+  connected = (localStorage.getItem('wallet') === 'connected') ? true : false; 
+  eosConf = {
+        httpEndpoint: this.config.httpEndpoint,
+        chainId: this.config.chain,
+        verbose: this.config.verbose
+  }
+  network = ScatterJS.Network.fromJson({
+        blockchain: this.config.blockchain,
+        host: this.config.host,
+        port: this.config.port,
+        protocol: this.config.protocol,
+        expireInSeconds: this.config,
+        chainId: this.config.chain
+  });
+  eos: any       = Eos(this.eosConf);
+  ScatterJS: any = ScatterJS;
+  loggedIn: any  = new EventEmitter<boolean>();
   accountName: any;
-  ScatterJS: any;
+  options: any;
+  initCounterErr = 0;
 
   constructor(private toastyService: ToastaService,
               private toastyConfig: ToastaConfig,
               @Inject(configNetworkService) private config) {
-     this.WINDOW.ScatterJS.plugins(new this.WINDOW.ScatterEOS());
-     this.toastyConfig.position = 'top-right';
+     this.toastyConfig.position = 'top-center';
      this.toastyConfig.theme = 'material';
-     this.config = {
-          network : {
-              blockchain: this.config.blockchain,
-              host: this.config.host,
-              port: this.config.port,
-              protocol: this.config.protocol,
-              expireInSeconds: this.config,
-              chainId: this.config.chain
-          },
-          Eos: {
-            httpEndpoint: this.config.httpEndpoint,
-            chainId: this.config.chain,
-            verbose: this.config.verbose
-          },
-     };
   }
 
   initScatter() {
-    this.WINDOW.ScatterJS.scatter.connect(this.config.appName).then(connected => {
+    this.ScatterJS.connect(this.config.appName, { network: this.network }).then(connected => {
       if (!connected) {
+          if (this.initCounterErr < 2){
+              this.initCounterErr += 1;
+              return this.initScatter();
+          }
           return this.showScatterError('Can\'t connect to Scatter');
       }
-      this.ScatterJS        = this.ScatterJS.scatter;
-      this.WINDOW.scatter   = null;
-      this.WINDOW.ScatterJS = null;
-      this.eos              = this.ScatterJS.eos(this.config.network, this.WINDOW.Eos, { chainId: this.config.chain }, this.config.network.protocol);
+      this.eos = this.ScatterJS.eos(this.network, Eos);
 
-      this.ScatterJS.getIdentity({ accounts: [this.config.network] }).then(identity => {
-              if (identity.accounts.length === 0) {
-                  return;
-              }
-              let objectIdentity;
-              if (this.ScatterJS.identity && this.ScatterJS.identity.accounts) {
-                     objectIdentity = this.ScatterJS.identity.accounts.find(x => x.blockchain === 'eos');
-              }
-              objectIdentity   = { name: identity.accounts[0].name };
-              this.accountName = objectIdentity.name;
-              localStorage.setItem('user', 'connected');
+      this.ScatterJS.login().then(id => {
+              if(!id) return console.error('no identity');
+              
+              let account = ScatterJS.account('eos'); 
+              this.accountName = account.name;
+              this.options = {authorization:[`${account.name}@${account.authority}`]};
+
+              localStorage.setItem('wallet', 'connected');
               localStorage.setItem('account', this.accountName);
       
               this.loggedIn.emit(true);
+              this.connected = true;
+              this.closePopUp();
               this.showMessage(`Hi ${this.accountName} :)`);
+
       }).catch(error => this.showScatterError(error));
     }).catch(error => {
         this.showScatterError(error);
     });
   }
 
-  showScatterError(error) {
-    if (!error) return;
-    let msg = error.message;
+  openPopup(){
+      let popup = document.getElementById('popup-window');
+      popup.setAttribute("class", "popup-window-visible");
+      popup.addEventListener("click", (event: any) => {
+        if (event.srcElement.className === 'popup-window-visible'){
+             this.closePopUp();
+        }
+      });
+  };
 
-    if (error.type == 'account_missing' && error.code == 402 ) {
-        msg = 'Missing required accounts, repull the identity. Choose account the same as added in Scatter.';
-    } else if (error.type == 'identity_rejected' && error.code == 402 ) {
-        msg = 'Please accept Identity request';
-    } else if (error.type == 'locked' && error.code == 423 ) {
-        msg = 'Your Scatter wallet is locked';
-    } else if (error.type == 'signature_rejected' && error.code == 402 ) {
-        msg = 'Voting Transaction canceled (you rejected signature request)';
-    } else if (error.code == 500) {
-    	msg = 'You can\'t close game in the middle';
+  closePopUp(){
+      let popup = document.getElementById('popup-window');
+      popup.removeAttribute("class");
+  }
+
+  showScatterError(error) {
+    if (!error) { return; }
+    let msg = error.message;
+    if (error.type === 'identity_rejected'){
+        location.reload();
     }
     const toastOption: ToastOptions = {
          title: 'Error',
-         msg: msg,
+         msg: msg || error,
          showClose: true,
-         timeout: 2000,
+         timeout: 3000,
          theme: 'material'
     };
-    this.toastyService.wait(toastOption);
+    this.toastyService.error(toastOption);
+  }
+
+  contractError(err) {
+      if (!err) {
+         return;
+      }
+      if (!err.message){
+        try{
+            err = JSON.parse(err).error.details[0].message;
+        } catch(e){
+            console.log(e);
+        }
+      } else {
+        err = err.message;
+      }
+      if (err.indexOf('requires a config.keyProvider') >= 0) err = 'Please, login Scatter first!';
+
+      const toastOption: ToastOptions = {
+         title: 'Error',
+         msg: err,
+         showClose: true,
+         timeout: 5000,
+         theme: 'material'
+      };
+      this.toastyService.error(toastOption);
+  }
+
+  showErr(err) {
+      let error;
+      try {
+         error = JSON.parse(err);
+      } catch (e) {
+         console.error(e);
+         error = err;
+      }
+      if (!error || !error.error || !error.error.details || !error.error.details[0]) {
+         return;
+      }
+      const toastOption: ToastOptions = {
+         title: 'Error',
+         msg: error.error.details[0].message,
+         showClose: true,
+         timeout: 3000,
+         theme: 'material'
+      };
+      this.toastyService.error(toastOption);
   }
 
   showMessage(msg) {
@@ -100,13 +158,13 @@ export class LoginEOSService {
          timeout: 1500,
          theme: 'material'
       };
-      this.toastyService.wait(toastOption);
+      this.toastyService.success(toastOption);
   }
 
   logout() {
-    localStorage.setItem('user', 'disconnect');
-    this.ScatterJS.scatter.forgetIdentity().then(() => {
+    this.ScatterJS.forgetIdentity().then(() => {
           localStorage.setItem('account', '');
+          localStorage.setItem('wallet', 'disconnect');
           location.href = '/';
     }).catch(err => {
           console.error(err);
